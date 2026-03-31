@@ -16,7 +16,7 @@ const retailerSchema = new mongoose.Schema(
     },
      defaultMilkType: {
       type: String,
-      enum: ["Cow", "Buffalo"],
+      // enum: ["Cow", "Buffalo"],
       required: true,
     },
     milkPrices: {

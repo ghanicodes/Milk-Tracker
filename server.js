@@ -8,6 +8,7 @@ import milkRouter from "./src/router/milkRouter.js";
 import retailerRouter from "./src/router/retailerRouter.js";
 import OpenRateMilkRouter from "./src/router/openRateMilkRouter.js";
 import SaleMilkRouter from "./src/router/saleMilkRouter.js";
+import addHomeDelivery  from "./src/router/addHomeDeliveryRouter.js";
 
 const app = express();
 dotenv.config();
@@ -20,6 +21,7 @@ app.use("/api", milkRouter);
 app.use("/api", retailerRouter);
 app.use("/api", OpenRateMilkRouter);
 app.use("/api", SaleMilkRouter);
+app.use("/api", addHomeDelivery);
 
 
 const PORT = process.env.PORT || 5000;

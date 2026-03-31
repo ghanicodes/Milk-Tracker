@@ -114,43 +114,75 @@ export const getSingleRetailer = async (req, res) => {
 };
 
 
+// Delete Retailer
+export const deleteRetailer = async (req, res) => {
+  try {
+    const { retailerId } = req.params;
+    const retailer = await Retailer.findByIdAndDelete(retailerId);
+    if (!retailer) {
+      return res.status(404).json({
+        success: false, 
+        message: "Retailer not found",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Retailer deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Retailer error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 // Update Retailer
 export const updateRetailer = async (req, res) => {
-    try {
-        const { retailerId } = req.params;
-        const { name, phone, address, defaultMilkType, milkPrices } = req.body;
+  try {
+    const { retailerId } = req.params;
+    const { name, phone, address, defaultMilkType, milkType, price } = req.body;
 
-        const retailer = await Retailer.findById(retailerId);
+    const updateData = {};
 
-        if (!retailer) {
-            return res.status(404).json({
-                success: false,
-                message: "Retailer not found",
-            });
-        }
+    // Basic fields
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (address) updateData.address = address;
 
-        retailer.name = name || retailer.name;
-        retailer.phone = phone || retailer.phone;
-        retailer.address = address || retailer.address;
-        retailer.defaultMilkType = defaultMilkType || retailer.defaultMilkType;
-       
-        if (milkPrices) {
-            retailer.milkPrices.cow = milkPrices.cow || retailer.milkPrices.cow;
-            retailer.milkPrices.buffalo = milkPrices.buffalo || retailer.milkPrices.buffalo;
-        }
-
-        const updatedRetailer = await retailer.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Retailer updated successfully",
-            retailer: updatedRetailer,
-        });
-    } catch (error) {
-        console.error("Update Retailer error:", error.message);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
+    // Default milk type
+    if (defaultMilkType) {
+      updateData.defaultMilkType = defaultMilkType;
     }
+
+    // Dynamic milk price
+    if (milkType && price) {
+      updateData[`milkPrices.${milkType.toLowerCase()}`] = price;
+    }
+
+    const updatedRetailer = await Retailer.findByIdAndUpdate(
+      retailerId,
+      { $set: updateData },
+      { returnDocument: "after" }
+    );
+
+    if (!updatedRetailer) {
+      return res.status(404).json({
+        success: false,
+        message: "Retailer not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Retailer updated successfully",
+      retailer: updatedRetailer,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
 };
