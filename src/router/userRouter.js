@@ -1,12 +1,12 @@
 import express from "express";
-import {adminDashboard, adminLogin, adminLogout} from "../controllers/userController.js";
-import { verifyAdmin } from "../middleware/authMiddleware.js";
+import {adminDashboard, login, adminLogout, userDashboard} from "../controllers/userController.js";
+import { verifyAdmin, verifyUser } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/admin/login", adminLogin);
+router.post("/login", login);
 router.get("/adminDashboard", verifyAdmin, adminDashboard);
-router.post("/admin/logout", adminLogout);
-
+router.get("/userDashboard", verifyUser, userDashboard);
+router.post("/logout", adminLogout);
 
 export default router;

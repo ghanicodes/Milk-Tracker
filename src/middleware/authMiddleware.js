@@ -8,10 +8,24 @@ export const verifyAdmin = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.role !== "admin") return res.status(403).json({ message: "Forbidden" });
 
-    req.admin = decoded; // aage use ke liye attach
+    req.user = decoded;
     next();
-  } catch (error) {
-    console.error("Auth middleware error:", error.message);
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+export const verifyUser = (req, res, next) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== "user") return res.status(403).json({ message: "Forbidden" });
+
+    req.user = decoded;
+    next();
+  } catch (err) {
     return res.status(401).json({ message: "Invalid token" });
   }
 };

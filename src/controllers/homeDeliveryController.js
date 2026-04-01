@@ -1,4 +1,5 @@
 import HomeDelivery from "../model/homeDelivery.js";
+import User from "../model/User.js";
 
 // Add Home Delivery (Daily Milk + Ledger)
 export const addHomeDelivery = async (req, res) => {
@@ -17,10 +18,24 @@ export const addHomeDelivery = async (req, res) => {
       paymentType,
     } = req.body;
 
+    // Check if user already exists
+    let user = await User.findOne({ phone: customerPhone });
+
+    // Agar nahi hai -> create user (role=user, password=phone)
+    if (!user) {
+      user = await User.create({
+        name: customerName,
+        phone: customerPhone,
+        email: `${customerPhone}@customer.milktracker.com`,
+        password: customerPhone, // simple login
+        role: "user",
+      });
+    }
+
     // Calculate first day amount
     const firstDayAmount = quantity * pricePerLiter;
 
-    const homeDelivery = new HomeDelivery({
+    const customer = await HomeDelivery.create({
       customerName,
       customerPhone,
       customerAddress,
@@ -32,6 +47,7 @@ export const addHomeDelivery = async (req, res) => {
       deliverySchedule,
       customDays,
       paymentType,
+      userId: user._id,
       // Initialize ledger with first debit
       ledger: [
         {
@@ -53,12 +69,10 @@ export const addHomeDelivery = async (req, res) => {
       ],
     });
 
-    await homeDelivery.save();
-
     res.status(201).json({
       success: true,
       message: "Home delivery added successfully with first day ledger and delivery",
-      homeDelivery,
+      customer,
     });
   } catch (error) {
     console.error("Add Home Delivery error:", error.message);
@@ -251,6 +265,30 @@ export const deleteHomeDelivery = async (req, res) => {
     res.status(500).json({
         success: false,
         message: "Internal server error",
+    });
+  }
+};
+
+// Get My Home Delivery (For Logged-in Customer)
+export const getMyHomeDelivery = async (req, res) => {
+  try {
+    const homeDelivery = await HomeDelivery.findOne({ userId: req.user.id });
+    if (!homeDelivery) {
+      return res.status(404).json({
+        success: false,
+        message: "No delivery record found for your account",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      homeDelivery,
+    });
+  } catch (error) {
+    console.error("Get My Home Delivery error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
     });
   }
 };

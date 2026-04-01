@@ -57,6 +57,10 @@ const homeDeliverySchema = new mongoose.Schema(
       type: Number, // per day liters
       required: true,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
     pricePerLiter: {
       type: Number,
       required: true,
