@@ -125,3 +125,53 @@ export const getFarmerByPhone = async (req, res) => {
         });
     }
 }
+
+// Add Farmer Payment (Debit to Ledger)
+export const addFarmerPayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, date, description } = req.body;
+
+        const farmer = await Farmer.findById(id);
+        if (!farmer) {
+            return res.status(404).json({
+                success: false,
+                message: "Farmer not found",
+            });
+        }
+
+        const paymentAmount = Number(amount);
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid payment amount",
+            });
+        }
+
+        // Add debit entry (Paying farmer)
+        farmer.ledger.push({
+            type: "debit",
+            amount: paymentAmount,
+            date: date || new Date(),
+            description: description || "Advance Payment",
+        });
+
+        // Increase balance/advance
+        farmer.balance += paymentAmount;
+        farmer.advance += paymentAmount;
+
+        await farmer.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Payment recorded successfully",
+            farmer
+        });
+    } catch (error) {
+        console.error("Add Farmer Payment error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}

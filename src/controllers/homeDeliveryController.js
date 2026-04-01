@@ -245,10 +245,60 @@ export const updateHomeDelivery = async (req, res) => {
   }
 };
 
+// Add Payment (Credit to Ledger)
+export const addPaymentLedger = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { amount, date, description } = req.body;
+
+    const customer = await HomeDelivery.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const paymentAmount = Number(amount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment amount",
+      });
+    }
+
+    // Add credit entry to ledger
+    customer.ledger.push({
+      type: "credit",
+      amount: paymentAmount,
+      date: date || new Date(),
+      description: description || "Payment received",
+    });
+
+    // Decrease balance
+    customer.balance -= paymentAmount;
+
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Payment recorded successfully",
+      balance: customer.balance,
+      ledger: customer.ledger,
+    });
+  } catch (error) {
+    console.error("Add Payment Ledger error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 // Delete Home Delivery (Cancel Subscription)
 export const deleteHomeDelivery = async (req, res) => {
-  try {    const { customerId } = req.params;
+  try {
+    const { customerId } = req.params;
     const customer = await HomeDelivery.findByIdAndDelete(customerId);
     if (!customer) {
         return res.status(404).json({

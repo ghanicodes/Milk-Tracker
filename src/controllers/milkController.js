@@ -59,7 +59,9 @@ export const addMilkCollection = async (req, res) => {
 export const getMilkCollection = async (req, res) => {
   try {
     const { farmerId } = req.params;
-    const milkRecords = await MilkCollection.find({ farmer: farmerId }).sort({ date: -1 });
+    const milkRecords = await MilkCollection.find({ farmer: farmerId })
+      .populate('farmer', 'name phone')
+      .sort({ date: -1 });
     res.status(200).json({
       success: true,
       milkRecords
@@ -154,7 +156,15 @@ export const updateMilkCollection = async (req, res) => {
 export const getMilkCollectionByDate = async (req, res) => {
   try {
     const { date } = req.params;
-    const milkRecords = await MilkCollection.find({ date }).populate('farmer', 'name phone');
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const milkRecords = await MilkCollection.find({ 
+      date: { $gte: start, $lte: end } 
+    }).populate('farmer', 'name phone');
+    
     res.status(200).json({
       success: true,
       milkRecords
@@ -172,7 +182,16 @@ export const getMilkCollectionByDate = async (req, res) => {
 export const getMilkCollectionByFarmerAndDate = async (req, res) => {
   try {
     const { farmerId, date } = req.params;
-    const milkRecords = await MilkCollection.find({ farmer: farmerId, date }).populate('farmer', 'name phone');
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const milkRecords = await MilkCollection.find({ 
+      farmer: farmerId, 
+      date: { $gte: start, $lte: end } 
+    }).populate('farmer', 'name phone');
+
     res.status(200).json({
       success: true,
       milkRecords
@@ -190,7 +209,16 @@ export const getMilkCollectionByFarmerAndDate = async (req, res) => {
 export const getMilkCollectionByFarmerAndDateRange = async (req, res) => {
   try {
     const { farmerId, startDate, endDate } = req.params;
-    const milkRecords = await MilkCollection.find({ farmer: farmerId, date: { $gte: startDate, $lte: endDate } }).populate('farmer', 'name phone');
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const milkRecords = await MilkCollection.find({ 
+      farmer: farmerId, 
+      date: { $gte: start, $lte: end } 
+    }).populate('farmer', 'name phone');
+
     res.status(200).json({
       success: true,
       milkRecords
@@ -208,7 +236,15 @@ export const getMilkCollectionByFarmerAndDateRange = async (req, res) => {
 export const getMilkCollectionByDateRange = async (req, res) => {
   try {
     const { startDate, endDate } = req.params;
-    const milkRecords = await MilkCollection.find({ date: { $gte: startDate, $lte: endDate } }).populate('farmer', 'name phone');
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const milkRecords = await MilkCollection.find({ 
+      date: { $gte: start, $lte: end } 
+    }).populate('farmer', 'name phone');
+
     res.status(200).json({
       success: true,
       milkRecords
