@@ -24,43 +24,67 @@ export const addSaleMilkRetailer = async (req, res) => {
     const collectionDate = new Date(date);
     collectionDate.setHours(0, 0, 0, 0);
 
-    const updateData = {};
+    let saleRecord = await SaleMilkRetailer.findOne({ retailer: retailerId, date: collectionDate });
+    if (!saleRecord) {
+      saleRecord = new SaleMilkRetailer({ retailer: retailerId, date: collectionDate, morning: [], evening: [] });
+    }
 
     // ✅ Morning logic
     if (morning.quantity !== undefined) {
       const milkType = morning.milkType || retailer.defaultMilkType;
-
-      updateData.morning = {
-        quantity: morning.quantity,
-        milkType: milkType,
-        pricePerLiter:
-          morning.pricePerLiter ||
-          (milkType === "Cow"
-            ? retailer.milkPrices.cow
-            : retailer.milkPrices.buffalo),
-      };
+      const price = morning.pricePerLiter || (milkType === "Cow" ? retailer.milkPrices.cow : retailer.milkPrices.buffalo);
+      
+      const existingIdx = saleRecord.morning.findIndex(m => m.milkType === milkType);
+      if (existingIdx >= 0) {
+        saleRecord.morning[existingIdx].quantity = morning.quantity;
+        saleRecord.morning[existingIdx].pricePerLiter = price;
+      } else {
+        saleRecord.morning.push({ quantity: morning.quantity, milkType, pricePerLiter: price });
+      }
     }
 
     // ✅ Evening logic
     if (evening.quantity !== undefined) {
       const milkType = evening.milkType || retailer.defaultMilkType;
-
-      updateData.evening = {
-        quantity: evening.quantity,
-        milkType: milkType,
-        pricePerLiter:
-          evening.pricePerLiter ||
-          (milkType === "Cow"
-            ? retailer.milkPrices.cow
-            : retailer.milkPrices.buffalo),
-      };
+      const price = evening.pricePerLiter || (milkType === "Cow" ? retailer.milkPrices.cow : retailer.milkPrices.buffalo);
+      
+      const existingIdx = saleRecord.evening.findIndex(e => e.milkType === milkType);
+      if (existingIdx >= 0) {
+        saleRecord.evening[existingIdx].quantity = evening.quantity;
+        saleRecord.evening[existingIdx].pricePerLiter = price;
+      } else {
+        saleRecord.evening.push({ quantity: evening.quantity, milkType, pricePerLiter: price });
+      }
     }
 
-    const saleRecord = await SaleMilkRetailer.findOneAndUpdate(
-      { retailer: retailerId, date: collectionDate },
-      { $set: updateData },
-      { upsert: true, returnDocument: "after" }
-    );
+    await saleRecord.save();
+
+    // Calculate sale value and update retailer balance
+    const morningValue = saleRecord.morning.reduce((sum, item) => sum + ((item.quantity || 0) * (item.pricePerLiter || 0)), 0);
+    const eveningValue = saleRecord.evening.reduce((sum, item) => sum + ((item.quantity || 0) * (item.pricePerLiter || 0)), 0);
+    const totalSaleValue = morningValue + eveningValue;
+
+    if (totalSaleValue > 0) {
+      // Remove any previous debit entry for this date to avoid duplicates on re-saves
+      retailer.ledger = retailer.ledger.filter(
+        (entry) => !(entry.type === "debit" && new Date(entry.date).toDateString() === collectionDate.toDateString())
+      );
+
+      // Recalculate balance from all ledger entries
+      retailer.ledger.push({
+        type: "debit",
+        amount: totalSaleValue,
+        date: collectionDate,
+        description: `Milk sale - ${formatSaleDescription(saleRecord)}`,
+      });
+
+      // Recalculate balance from scratch for accuracy
+      retailer.balance = retailer.ledger.reduce((acc, entry) => {
+        return entry.type === "debit" ? acc + entry.amount : acc - entry.amount;
+      }, 0);
+
+      await retailer.save();
+    }
 
     res.status(201).json({
       success: true,
@@ -76,6 +100,17 @@ export const addSaleMilkRetailer = async (req, res) => {
     });
   }
 };
+
+// Helper to format sale description
+function formatSaleDescription(sale) {
+  const parts = [];
+  const mTotal = (sale.morning || []).reduce((sum, m) => sum + (m.quantity || 0), 0);
+  const eTotal = (sale.evening || []).reduce((sum, e) => sum + (e.quantity || 0), 0);
+  
+  if (mTotal > 0) parts.push(`M:${mTotal}L`);
+  if (eTotal > 0) parts.push(`E:${eTotal}L`);
+  return parts.join(', ') || 'Sale';
+}
 
 // Get Sale Milk for Retailer
 export const getSaleMilkRetailer = async (req, res) => {

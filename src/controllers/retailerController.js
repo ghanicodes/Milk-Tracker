@@ -121,7 +121,7 @@ export const deleteRetailer = async (req, res) => {
     const retailer = await Retailer.findByIdAndDelete(retailerId);
     if (!retailer) {
       return res.status(404).json({
-        success: false, 
+        success: false,
         message: "Retailer not found",
       });
     }
@@ -184,5 +184,141 @@ export const updateRetailer = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false });
+  }
+};
+
+// Record Retailer Payment (Credit to Ledger — reduces balance owed)
+export const addRetailerPayment = async (req, res) => {
+  try {
+    const { retailerId } = req.params;
+    const { amount, date, description } = req.body;
+
+    const retailer = await Retailer.findById(retailerId);
+    if (!retailer) {
+      return res.status(404).json({
+        success: false,
+        message: "Retailer not found",
+      });
+    }
+
+    const paymentAmount = Number(amount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment amount",
+      });
+    }
+
+    // Add credit entry (retailer paying reduces what they owe)
+    retailer.ledger.push({
+      type: "credit",
+      amount: paymentAmount,
+      date: date || new Date(),
+      description: description || "Payment Received",
+    });
+
+    // Decrease balance (they owe less now)
+    retailer.balance -= paymentAmount;
+
+    await retailer.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Payment recorded successfully",
+      retailer,
+    });
+  } catch (error) {
+    console.error("Add Retailer Payment error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// Set Daily Retailer Payment (Idempotent: replaces payment for a specific date)
+export const setDailyRetailerPayment = async (req, res) => {
+  try {
+    const { retailerId } = req.params;
+    const { amount, date } = req.body;
+
+    const retailer = await Retailer.findById(retailerId);
+    if (!retailer) {
+      return res.status(404).json({
+        success: false,
+        message: "Retailer not found",
+      });
+    }
+
+    const paymentAmount = Number(amount) || 0;
+    const paymentDate = new Date(date).toDateString();
+
+    // 1. Identify all existing credit entries for this specific date
+    const oldCreditEntries = retailer.ledger.filter(
+      (entry) => entry.type === "credit" && new Date(entry.date).toDateString() === paymentDate
+    );
+
+    // 2. Restore balance by adding back the old payment amounts
+    const oldPaymentTotal = oldCreditEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    retailer.balance += oldPaymentTotal;
+
+    // 3. Remove old credit entries for this date
+    retailer.ledger = retailer.ledger.filter(
+      (entry) => !(entry.type === "credit" && new Date(entry.date).toDateString() === paymentDate)
+    );
+
+    // 4. Add new credit entry if amount > 0
+    if (paymentAmount > 0) {
+      retailer.ledger.push({
+        type: "credit",
+        amount: paymentAmount,
+        date: date || new Date(),
+        description: "Payment Received (Daily)",
+      });
+
+      // 5. Deduct new amount from the restored balance
+      retailer.balance -= paymentAmount;
+    }
+
+    await retailer.save();
+
+    res.status(200).json({
+      success: true,
+      message: paymentAmount > 0 ? "Daily payment updated" : "Daily payment removed",
+      retailer,
+    });
+  } catch (error) {
+    console.error("Set Daily Payment error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// Reset all retailer balances and ledgers to zero
+export const resetAllRetailerBalances = async (req, res) => {
+  try {
+    const result = await Retailer.updateMany(
+      {},
+      {
+        $set: {
+          balance: 0,
+          ledger: [],
+        },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "All retailer balances and ledgers have been reset to zero.",
+      count: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Reset All Balances error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };

@@ -51,6 +51,14 @@ export const getSingleFarmer = async (req, res) => {
     try {
         const { id } = req.params;
         const farmer = await Farmer.findById(id);
+        
+        if (!farmer) {
+            return res.status(404).json({
+                success: false,
+                message: "Farmer not found",
+            });
+        }
+
         res.status(200).json({
             success: true,
             farmer

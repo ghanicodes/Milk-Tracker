@@ -1,5 +1,22 @@
 import mongoose from "mongoose";
 
+const retailerLedgerSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ["debit", "credit"], // debit = sale (owes more), credit = payment (owes less)
+    required: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+  description: String,
+});
+
 const retailerSchema = new mongoose.Schema(
   {
     name: {
@@ -23,6 +40,11 @@ const retailerSchema = new mongoose.Schema(
       cow: { type: Number, default: 0 },
       buffalo: { type: Number, default: 0 },
     },
+    balance: {
+      type: Number,
+      default: 0,
+    },
+    ledger: [retailerLedgerSchema],
   },
   { timestamps: true },
 );

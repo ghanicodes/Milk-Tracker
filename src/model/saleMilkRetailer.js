@@ -55,23 +55,23 @@ const saleMilkRetailerSchema = new mongoose.Schema(
       required: true,
     },
 
-    morning: {
+    morning: [{
       quantity: { type: Number, default: 0 },
       pricePerLiter: { type: Number, default: 0 },
       milkType: {
         type: String,
         enum: ["Cow", "Buffalo"],
       },
-    },
+    }],
 
-    evening: {
+    evening: [{
       quantity: { type: Number, default: 0 },
       pricePerLiter: { type: Number, default: 0 },
       milkType: {
         type: String,
         enum: ["Cow", "Buffalo"],
       },
-    },
+    }],
   },
   { timestamps: true }
 );

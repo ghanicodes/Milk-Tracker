@@ -9,19 +9,24 @@ import milkRouter from "./src/router/milkRouter.js";
 import retailerRouter from "./src/router/retailerRouter.js";
 import OpenRateMilkRouter from "./src/router/openRateMilkRouter.js";
 import SaleMilkRouter from "./src/router/saleMilkRouter.js";
-import addHomeDelivery  from "./src/router/addHomeDeliveryRouter.js";
+import addHomeDelivery from "./src/router/addHomeDeliveryRouter.js";
 
 const app = express();
 dotenv.config();
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow if no origin (server-to-server or tools like Postman) 
+    // or if the origin is in our whitelist or is a local dev origin
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
